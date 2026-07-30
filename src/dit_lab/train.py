@@ -22,10 +22,8 @@ def train_noise_predictor(
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     model.to(device)
     text_encoder.to(device)
-    optimizer = torch.optim.AdamW(
-        list(model.parameters()) + list(text_encoder.parameters()),
-        lr=config.learning_rate,
-    )
+    trainable_parameters = list(model.parameters()) + list(text_encoder.parameters())
+    optimizer = torch.optim.AdamW(trainable_parameters, lr=config.learning_rate)
 
     for epoch in range(1, config.epochs + 1):
         model.train()
@@ -49,7 +47,7 @@ def train_noise_predictor(
 
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(trainable_parameters, max_norm=1.0)
             optimizer.step()
 
             running_loss += loss.item()

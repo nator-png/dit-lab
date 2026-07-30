@@ -12,6 +12,10 @@ class VideoDiT(nn.Module):
         super().__init__()
         self.config = config or VideoDiTConfig()
         cfg = self.config
+        if cfg.image_size % cfg.patch_size != 0:
+            raise ValueError("image_size must divide evenly by patch_size.")
+        if cfg.embedding_dim % cfg.heads != 0:
+            raise ValueError("embedding_dim must divide evenly by heads.")
         patch_dim = cfg.patch_size * cfg.patch_size * cfg.channels
         grid = cfg.image_size // cfg.patch_size
         num_patches = cfg.frames * grid * grid

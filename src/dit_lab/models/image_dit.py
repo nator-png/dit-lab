@@ -12,6 +12,10 @@ class ImageDiT(nn.Module):
         super().__init__()
         self.config = config or ImageDiTConfig()
         cfg = self.config
+        if cfg.image_size % cfg.patch_size != 0:
+            raise ValueError("image_size must divide evenly by patch_size.")
+        if cfg.embedding_dim % cfg.heads != 0:
+            raise ValueError("embedding_dim must divide evenly by heads.")
         patch_dim = cfg.patch_size * cfg.patch_size * cfg.channels
         patches_per_side = cfg.image_size // cfg.patch_size
         num_patches = patches_per_side * patches_per_side
