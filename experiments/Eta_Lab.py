@@ -5,15 +5,6 @@ import random
 from pathlib import Path
 
 
-pth = Path("C:/Users/block/Desktop/AI Universe/AI Datasets/Test Songs")
-file = Path.glob(pth,"*mp3")
-
-file_list = []
-
-for f in file:
-    file_list.append(f)
-
-
 FRAMES_10S = 430
 
 class AudioChunkDataset(Dataset):
@@ -43,23 +34,26 @@ def collate_fn(batch):
     mels, masks = zip(*batch)
     mels = torch.stack(mels) # [B, 128, 430]
 
-    # if any sample was padded, stack masks. else None
-    if masks[0] is not None:
-        masks = torch.stack(masks) # [B, 430]
-        return mels, masks
+    if any(mask is not None for mask in masks):
+        fixed_masks = [
+            mask if mask is not None else torch.ones(FRAMES_10S)
+            for mask in masks
+        ]
+        return mels, torch.stack(fixed_masks)
     return mels, None
 
-loader = DataLoader(
-    AudioChunkDataset(file_list),
-    batch_size=10,
-    shuffle=True,
-    num_workers=0,
-    collate_fn=collate_fn
-)
+
+def build_loader(audio_dir="data/audio", batch_size=10):
+    file_list = list(Path(audio_dir).glob("*.mp3"))
+    return DataLoader(
+        AudioChunkDataset(file_list),
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=0,
+        collate_fn=collate_fn
+    )
 
 
-
-
-
-for x,y in loader:
-    print(x.shape)
+if __name__ == "__main__":
+    for x, _ in build_loader():
+        print(x.shape)

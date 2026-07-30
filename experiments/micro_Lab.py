@@ -150,10 +150,44 @@ class Model(nn.Module):
     
 
 
-NLP = Model()
-optimizer = torch.optim.AdamW(NLP.parameters(),lr=5e-4)
+def train_demo(steps=50):
+    model = Model()
+    optimizer = torch.optim.AdamW(model.parameters(),lr=5e-4)
 
-steps = 50
+    for step in range(steps):
+        x,y = get_batch()
+        logits = model(x)
+        loss = F.cross_entropy(logits.view(-1,con["vocab_size"]),y.view(-1))
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if step % 2 == 0:
+            print(f"Step:{step}   Loss:{loss.item():.4f}")
+
+    return model
+
+
+def Generate(prompt,max_tok,model):
+    words = torch.tensor([[txt2int[t] for t in prompt.split()]])
+
+    for _ in range(max_tok):
+        with torch.no_grad():
+            ids = words[:,-con["con_length"]:]
+            logits = model(ids)[:,-1,:]
+            prob = torch.softmax(logits,-1)
+            next_id = torch.multinomial(prob,1)
+            words = torch.cat((words,next_id),1)
+
+    return [int2txt[int(i)] for i in words[0]]
+
+
+if __name__ == "__main__":
+    NLP = train_demo()
+    print(Generate("silly",8,NLP))
+
+"""
+Previous inline demo kept for reference:
 for step in range(steps):
     x,y = get_batch()
     logits = NLP(x)
@@ -183,6 +217,7 @@ def Generate(prompt,max_tok):
     return [int2txt[int(i)] for i in words[0]]
 
 print(Generate("silly",8))
+"""
 
 
 

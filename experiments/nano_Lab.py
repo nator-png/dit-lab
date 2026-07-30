@@ -21,8 +21,7 @@ grifin = T.GriffinLim(n_fft=n_fft,n_iter=64,hop_length=hop,power=2.0)
 
 
 
-path = "C:/Users/block/Music/Justin_Bieber_-_11_Ghost.mp3" 
-def load_aud(pth = path):
+def load_aud(pth):
 
     audio_wave_tensor,sr = torchaudio.load(pth)
 
@@ -33,7 +32,7 @@ def load_aud(pth = path):
 
     return audio_wave_tensor
 
-def audio_to_patches(audio_tensor = load_aud()):
+def audio_to_patches(audio_tensor):
     aud_spec = mel_spec(audio_tensor)
     c,h,w = aud_spec.shape
     aud_db = mel_db(aud_spec)
@@ -52,11 +51,7 @@ def audio_to_patches(audio_tensor = load_aud()):
 
     return num_patches,(c,h + h_pad,w + w_pad),mean,std
 
-patches,shape,mean,std = audio_to_patches()
-
-
-
-def patches_to_audio(patches = patches,shape = shape,mean = mean,std = std,original_len = load_aud().shape[-1]):
+def patches_to_audio(patches,shape,mean,std,original_len=None):
     c,h,w = shape
 
     h_grid = h // patch_size
@@ -78,12 +73,8 @@ def patches_to_audio(patches = patches,shape = shape,mean = mean,std = std,origi
 
 
 
-song = patches_to_audio().reshape(-1,1)
-song = song.numpy()
-import sounddevice as sd
-
-sd.play(song, samplerate=sample_rate)
-sd.wait()
+if __name__ == "__main__":
+    print("nano_Lab is an archived audio patching experiment. Call load_aud/audio_to_patches manually.")
 
 
 

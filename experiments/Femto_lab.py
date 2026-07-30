@@ -1,6 +1,5 @@
-import torch
-import random
 import torchaudio
+import argparse
 """
 def custom_collate_func(batch):
 
@@ -18,6 +17,13 @@ batch = (x,y,z)
 
 print(custom_collate_func(batch))"""
 
-aud,sr = torchaudio.load("C:/Users/block/Music/Fireboy_DML_&_D_Smoke_-_Champion_(Audio)(128k).mp3")
-print(aud.shape)
-print(sr)
+def inspect_audio(path):
+    audio, sample_rate = torchaudio.load(path)
+    print(audio.shape)
+    print(sample_rate)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Inspect an audio file with torchaudio.")
+    parser.add_argument("path")
+    inspect_audio(parser.parse_args().path)

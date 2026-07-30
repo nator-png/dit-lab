@@ -202,15 +202,8 @@ class ImageText(Dataset):
     
 
 
-ds = ImageText("C:/Users/block/Pictures","C:/Users/block/Desktop/AI Universe/AI Datasets/captions.txt")
-
-model = DiTModel()
-optimizer = torch.optim.AdamW(model.parameters(),lr=3e-4)
-
-loader = DataLoader(dataset=ds,batch_size=config["batch_size"])
-
-
-def train_func(model = model,epochs = config["epochs"],dataloader = loader):
+def train_func(model, dataloader, epochs = config["epochs"], lr=3e-4):
+    optimizer = torch.optim.AdamW(model.parameters(),lr=lr)
 
     for epoch in range(epochs):
 
@@ -227,8 +220,8 @@ def train_func(model = model,epochs = config["epochs"],dataloader = loader):
 
             predictions = model(noisy_img,text,t)
             loss = F.mse_loss(predictions,img_tensor)
-            optimizer.step()
             loss.backward()
+            optimizer.step()
 
             epoch_loss = epoch_loss + loss
         
@@ -238,12 +231,9 @@ def train_func(model = model,epochs = config["epochs"],dataloader = loader):
     
 
 
-train_func()
-
-
 @torch.no_grad()
 
-def generate(prompt,steps=50,model = model):
+def generate(prompt,model,steps=50):
     
     model.eval()
     img = torch.randn(config["batch_size"],config["channels"],config["img_size"][0],config["img_size"][1])
@@ -265,10 +255,14 @@ def generate(prompt,steps=50,model = model):
 
     img = img.reshape(config["img_size"][0],config["img_size"][1],config["channels"]).numpy()
 
-    img = plt.imshow(img)
+    plt.imshow(img)
     plt.axis("off")
     plt.show()
 
 
-generate("Halloween pumpkins")
+if __name__ == "__main__":
+    dataset = ImageText("data/images", "data/captions.txt")
+    model = DiTModel()
+    loader = DataLoader(dataset=dataset,batch_size=config["batch_size"])
+    train_func(model=model, dataloader=loader)
 

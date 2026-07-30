@@ -6,9 +6,13 @@ import torchaudio.functional as F
 import torchaudio.transforms as T
 import hashlib
 from torch.utils.data import DataLoader,Dataset
-import sounddevice as sd
 import numpy as np
 import os
+
+try:
+    import sounddevice as sd
+except ImportError:
+    sd = None
 
 
 config = {
@@ -24,7 +28,7 @@ config = {
     'hop_length':256,
     'sample_rate':22050,
     'power':2.0,
-    'stype':'"power"',
+    'stype':'power',
     'vocab_size':100000,
     'lr':3e-4,
     'steps':1000,
@@ -59,8 +63,7 @@ class Embeddings(nn.Module):
         aud_img = self.projections(x)
         b = aud_img.shape[0]
         aud_img = aud_img.permute(0,2,3,1).reshape(b,-1,config['embd'])
-        x = aud_img + self.pos_encoding
-        return aud_img
+        return aud_img + self.pos_encoding
     
 
 
@@ -78,7 +81,7 @@ class TimestepEmbed(nn.Module):
 
     def forward(self,t):
 
-        freqs = torch.exp(torch.arange(self.half_dim) * -np.log(10000)/self.half_dim - 1)
+        freqs = torch.exp(torch.arange(self.half_dim, device=t.device) * -np.log(10000)/self.half_dim - 1)
         embd = t[:,None] * freqs[None,:]
         embd = torch.cat([embd.sin(),embd.cos()],dim=-1)
 
@@ -115,7 +118,7 @@ class DiTBlock(nn.Module):
         text_emb = self.txt_emb(text_emb).unsqueeze(1)
 
         x = self.norm1(aud_img) * (scale1.unsqueeze(0) + 1) + shift1.unsqueeze(0)
-        x = x + gate1 * self.aud_img_att(aud_img,aud_img,aud_img)[0]
+        x = x + gate1.unsqueeze(1) * self.aud_img_att(aud_img,aud_img,aud_img)[0]
 
         x = self.norm2(x) * (scale2.unsqueeze(0) + 1) + shift2.unsqueeze(0)
         x = x + gate2.unsqueeze(0) * self.text_cross_att(x,text_emb,text_emb)[0]
@@ -132,7 +135,7 @@ class DiTModel(nn.Module):
 
         self.Embeddings = Embeddings(c,h,w)
         self.TimeStepEmb = TimestepEmbed()
-        self.DiTBlock = [DiTBlock() for _ in range(layers)]
+        self.DiTBlock = nn.ModuleList([DiTBlock() for _ in range(layers)])
         self.num_patches = (h//patch_size) * (w//patch_size)
         patches = c*patch_size*patch_size
         self.final_layer = nn.Linear(embd,patches)
@@ -219,7 +222,7 @@ class Tokenizer:
 
 
 class AudioText(Dataset):
-    def __init__(self,audio_path = "C:/Users/block/Music/",captions = "C:/Users/block/Desktop/AI Universe/AI Datasets/song_descriptions.txt"):
+    def __init__(self,audio_path = "data/audio",captions = "data/audio_captions.txt"):
         
 
         self.audio_path = audio_path
@@ -251,16 +254,8 @@ class AudioText(Dataset):
 
         return aud_img,text_emb
     
-b,c,h,w = (1,1,128,256)
-loader = DataLoader(dataset=AudioText(),batch_size=config['batch_size'])
-
-
-
-Model = DiTModel(c,h,w)
-optimizer = torch.optim.AdamW(Model.parameters(),lr=config['lr'])
-
-
-def train_func(dataloader = loader,epochs = config['epochs'],lr = config['lr'],t_steps = config['steps']):
+def train_func(model,dataloader,epochs = config['epochs'],lr = config['lr'],t_steps = config['steps']):
+    optimizer = torch.optim.AdamW(model.parameters(),lr=lr)
 
     for epoch in range(epochs):
         
@@ -272,7 +267,7 @@ def train_func(dataloader = loader,epochs = config['epochs'],lr = config['lr'],t
             b,_,_,_ = noisy_aud.shape
             t_step = torch.randint(0,t_steps,(b,))
             alpha = t_step/t_steps
-            prediction = Model(noisy_aud,text_prompt,t_step) 
+            prediction = model(noisy_aud,text_prompt,t_step)
 
             prediction = (prediction + noisy_aud) * alpha
             prediction_loss = Fn.mse_loss(prediction,aud_clip)
@@ -291,7 +286,7 @@ def train_func(dataloader = loader,epochs = config['epochs'],lr = config['lr'],t
 
             
 
-def Generate_aud(prompt,t_steps = config['steps'],steps = 50,model = Model):
+def Generate_aud(prompt,model,t_steps = config['steps'],steps = 50,play_audio=False):
 
     aud = torch.randn(1,1,128,256)  
     text_ids = Tokenizer().encode(prompt)
@@ -308,8 +303,11 @@ def Generate_aud(prompt,t_steps = config['steps'],steps = 50,model = Model):
     aud = torch.pow(10.0,aud/10.0).squeeze(0).squeeze(0)
     aud = (mel_basis_inverse.T @ aud).clamp(min=1e-10)
     aud = griffin(aud).detach().numpy().T
-    sd.play(aud,samplerate=config['sample_rate'])
-    sd.wait()
+    if play_audio:
+        if sd is None:
+            raise RuntimeError("Install sounddevice to play generated audio.")
+        sd.play(aud,samplerate=config['sample_rate'])
+        sd.wait()
     
 
 
@@ -317,5 +315,5 @@ def Generate_aud(prompt,t_steps = config['steps'],steps = 50,model = Model):
 
 
 
-prompt = " generate a song similar to that one in the movie titled chan can dunk with lyrics like 'Am ontop of the world right now'"
-print(Generate_aud(prompt=prompt))
+if __name__ == "__main__":
+    print("Audio_DiT is an archived experiment. Use src/dit_lab and scripts/ for training.")
