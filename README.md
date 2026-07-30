@@ -2,6 +2,8 @@
 
 PyTorch Diffusion Transformer workbench for image, audio, and video generation.
 
+Related app: [ExamAI Coach on Google Play](https://play.google.com/store/apps/details?id=com.examaicoach)
+
 This repo now has two layers:
 
 - `src/dit_lab/`: reusable package code with configs, model modules, datasets, and a standard training loop.
